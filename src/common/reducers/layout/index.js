@@ -1,47 +1,45 @@
-import { UI_OPEN_SIDEBAR, UI_CLOSE_SIDEBAR, UI_WINDOW_RESIZE } from 'actions/layout'
-import { LOCATION_CHANGE, APP_INIT } from 'actions/common'
+// @flow
+import {
+	UI_TOGGLE_SIDEBAR,
+	UI_WINDOW_RESIZE
+} from 'actions/layout'
+import {LOCATION_CHANGE} from 'actions/common'
+import {computeLayoutMobileStatuses} from 'selectors'
 
-export const initialState = {
-  sidebarOpened: false,
-  isMobile: false
+export type State = {
+	sidebarOpened: boolean,
+	innerWidth?: number
 }
 
-export function layout (state = initialState, action) {
-  switch (action.type) {
-    case APP_INIT:
-      {
-        let { innerWidth } = window
-        let isMobile = innerWidth < 1025 // 1024px - is the main breakpoint in ui
-        return {
-          ...state,
-          isMobile
-        }
-      }
-    case UI_WINDOW_RESIZE:
-      {
-        let { innerWidth } = window
-        let isMobile = innerWidth < 1025 // 1024px - is the main breakpoint in ui
-        return {
-          ...state,
-          isMobile
-        }
-      }
-    case UI_OPEN_SIDEBAR:
-      return {
-        ...state,
-        sidebarOpened: true
-      }
-    case UI_CLOSE_SIDEBAR:
-      return {
-        ...state,
-        sidebarOpened: false
-      }
-    case LOCATION_CHANGE:
-      return {
-        ...state,
-        sidebarOpened: false
-      }
-    default:
-      return state
-  }
+// NOTE: sidebar is opened by default and rendered as visible on server
+export const initialState: State = {
+	sidebarOpened: true,
+	innerWidth: 993
+}
+
+export function layout (state: State = initialState, action): State {
+	switch (action.type) {
+	case UI_WINDOW_RESIZE: {
+		const {innerWidth} = action.payload
+		const {isMobile} = computeLayoutMobileStatuses({innerWidth})
+
+		return {
+			innerWidth,
+			sidebarOpened: !isMobile
+		}
+	}
+	case UI_TOGGLE_SIDEBAR:
+		return {
+			...state,
+			sidebarOpened: !state.sidebarOpened
+		}
+	case LOCATION_CHANGE:
+		const {isMobile} = computeLayoutMobileStatuses(state)
+		return {
+			...state,
+			sidebarOpened: !isMobile
+		}
+	default:
+		return state
+	}
 }

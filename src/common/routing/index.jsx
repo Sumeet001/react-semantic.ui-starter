@@ -1,76 +1,87 @@
+// @flow
 import React from 'react'
-import {Route, Redirect, Switch} from 'react-router-dom'
-import {createBrowserHistory} from 'history'
-import {App, Inbox, Dashboard, Login} from 'containers'
-import {RouteAuth} from 'components'
+import {createBrowserHistory, createMemoryHistory} from 'history'
+import {asyncComponent} from 'react-async-component'
+import {Loader, Dimmer, Header, Icon} from 'semantic-ui-react'
+import _ from 'lodash'
+import Dashboard from 'containers/Dashboard'
+import Links from 'containers/Links'
 
-export const history = getHistory()
-
-export const appRouting = [
-  {
-    path: '/',
-    icon: 'newspaper',
-    name: 'Dashboard',
-    exact: true,
-    sidebarVisible: true,
-    tag: RouteAuth,
-    component: Dashboard
-  },
-  {
-    path: '/inbox',
-    name: 'Inbox',
-    exact: true,
-    icon: 'comments outline',
-    sidebarVisible: true,
-    tag: RouteAuth,
-    component: Inbox
-  },
-  {
-    external: true,
-    path: 'https://github.com/Metnew/react-semantic.ui-starter',
-    icon: 'github',
-    name: 'Github',
-    sidebarVisible: true
-  },
-  {
-    path: '/auth',
-    name: 'Auth',
-    tag: Route,
-    component: Login
-  }
-]
-
-/**
- * Returns application routing with protected by AuthCheck func routes
- * @param {Function} authCheck checks is user logged in
- */
-export const Routing = authCheck => {
-  // remove components that aren't application routes, (e.g. github link in sidebar)
-  const routes = appRouting.filter(a => a.tag || a.component)
-  // render components that are inside Switch (main view)
-  const routesRendered = routes.map((a, i) => {
-    // get tag for Route. is it RouteAuth `protected route` or Route?
-    const Tag = a.tag
-    const {path, exact, strict, component} = a
-    // can visitor access this route?
-    const canAccess = authCheck
-    // select only props that we need
-    const b = {path, exact, strict, component, canAccess}
-
-    return <Tag key={i} {...b} />
-  })
-
-  return (
-    <App>
-      <Switch>
-        {routesRendered}
-        <Redirect to="/" />
-      </Switch>
-    </App>
-  )
+function asyncComponentCreator (url) {
+	return asyncComponent({
+		resolve: () => {
+			if (!process.env.BROWSER) {
+				// flow-disable-next-line
+				return require(`containers/${url}/index.jsx`).default
+			}
+			// flow-disable-next-line: The parameter passed to import() must be a literal string
+			return import(/* webpackChunkName:"[index].[request]" */ `containers/${url}/index.jsx`)
+		},
+		LoadingComponent () {
+			return (
+				<Dimmer active>
+					<Loader size="large" active>
+						Loading page...
+					</Loader>
+				</Dimmer>
+			)
+		},
+		ErrorComponent () {
+			return (
+				<Dimmer active>
+					<Header inverted as="h2" icon textAlign="center">
+						<Icon name="refresh" />
+						Refresh
+						<Header.Subheader>Got error while loading page.</Header.Subheader>
+					</Header>
+				</Dimmer>
+			)
+		},
+		autoResolveES2015Default: true,
+		env: process.env.BROWSER ? 'browser' : 'node',
+		serverMode: 'resolve'
+	})
 }
 
-function getHistory () {
-  const basename = process.env.BUILD_DEMO ? '/react-semantic.ui-starter' : ''
-  return createBrowserHistory({basename})
+function routingFnCreator (useFor) {
+	// const AsyncNotFound = asyncComponentCreator('NotFound')
+	// Dashboard and Links included in build
+	// NotFound(404) is lazy
+	const routes: any[] = [
+		{
+			path: '/',
+			exact: true,
+			component: Dashboard,
+			name: 'Dashboard'
+		},
+		{
+			path: '/links',
+			exact: true,
+			component: Links,
+			name: 'Links'
+		},
+		{
+			component: asyncComponentCreator('NotFound'),
+			name: '404'
+		}
+	]
+
+	const fns = {
+		// Returns routing for React-Router
+		routing () {
+			return routes.map(a => _.pick(a, ['path', 'strict', 'exact', 'component', 'lazy']))
+		},
+		// Returns `name` + `path`. used in Header
+		meta () {
+			return routes.map(a => _.pick(a, ['path', 'name', 'exact', 'strict']))
+		}
+	}
+
+	return fns[useFor]
 }
+
+const createRequiredHistory = process.env.BROWSER ? createBrowserHistory : createMemoryHistory
+
+export const getMetaRoutes = routingFnCreator('meta')
+export const getRouterRoutes = routingFnCreator('routing')
+export const history = createRequiredHistory()

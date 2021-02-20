@@ -1,17 +1,15 @@
+// @flow
 import {combineReducers} from 'redux'
 import {routerReducer} from 'react-router-redux'
 
 import {layout} from './layout'
-import {inbox} from './inbox'
-import {auth} from './auth'
-import {loginCR} from './login_component_reducer'
-import {dashboard} from './dashboard'
+import {links} from './links'
 
-export const rootReducer = combineReducers({
-  layout,
-  inbox,
-  auth,
-  dashboard,
-  loginCR,
-  routing: routerReducer
+// Root reducer
+export default combineReducers({
+	layout,
+	entities: combineReducers({
+		links
+	}),
+	routing: routerReducer
 })

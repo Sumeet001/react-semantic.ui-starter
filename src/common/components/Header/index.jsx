@@ -1,36 +1,49 @@
-import React, {Component} from 'react'
-import PropTypes from 'prop-types'
+/**
+ * @flow
+ */
+import React from 'react'
+import {connect} from 'react-redux'
 import {Icon} from 'semantic-ui-react'
+import {withRouter, matchPath} from 'react-router'
 import _ from 'lodash'
-import './Header.scss'
+import {TOGGLE_SIDEBAR} from 'actions/layout'
+import {StyledHeader} from './style'
+import {getMetaRoutes} from 'routing'
+import Headroom from 'react-headroom'
 
-export default class Header extends Component {
-  shouldComponentUpdate (nextProps) {
-    return !_.isEqual(nextProps, this.props)
-  }
-
-  static propTypes = {
-    title: PropTypes.string,
-    toggleSidebar: PropTypes.func,
-    isLoggedIn: PropTypes.bool
-  }
-
-  render () {
-    let {title, toggleSidebar, isLoggedIn} = this.props
-
-    return (
-      <header>
-        <div className="header-inner">
-          {isLoggedIn &&
-            <span className="navicon" onClick={toggleSidebar}>
-              <Icon name="content" />
-            </span>}
-          <span className="title">
-            {title}
-          </span>
-          <span className="spacer" />
-        </div>
-      </header>
-    )
-  }
+type Props = {
+	title: string,
+	toggleSidebar: () => void
 }
+
+const Header = ({title, toggleSidebar}: Props) => {
+	return (
+		<Headroom>
+			<StyledHeader>
+				<div className="header-inner">
+					<span className="navicon" role="button" onClick={toggleSidebar}>
+						<Icon name="content" />
+					</span>
+					<span className="page-title">{title}</span>
+				</div>
+			</StyledHeader>
+		</Headroom>
+	)
+}
+
+const mapStateToProps = (state, props) => {
+	const {location: {pathname}} = props
+	const {name: title} =
+		_.find(getMetaRoutes(), a => matchPath(pathname, a))
+	return {
+		title
+	}
+}
+
+const mapDispatchToProps = dispatch => ({
+	toggleSidebar () {
+		dispatch(TOGGLE_SIDEBAR)
+	}
+})
+
+export default withRouter(connect(mapStateToProps, mapDispatchToProps)(Header))

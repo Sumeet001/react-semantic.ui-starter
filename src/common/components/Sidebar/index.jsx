@@ -1,68 +1,87 @@
+// @flow
 import React, {Component} from 'react'
-import PropTypes from 'prop-types'
+import {connect} from 'react-redux'
+import {Menu, Icon, Image} from 'semantic-ui-react'
+import {withRouter} from 'react-router'
 import {NavLink} from 'react-router-dom'
-import {Menu, Sidebar, Icon, Image} from 'semantic-ui-react'
-import './Sidebar.scss'
+import {getLayoutState} from 'selectors'
+import {StyledSidebar} from './style'
 
-export default class SidebarComponent extends Component {
-  static propTypes = {
-    open: PropTypes.bool,
-    logout: PropTypes.func,
-    routing: PropTypes.array,
-    isMobile: PropTypes.bool
-  }
-
-  render () {
-    const {open, logout, routing, isMobile} = this.props
-
-    const sidebarProps = {
-      visible: open || !isMobile,
-      as: Menu,
-      vertical: true,
-      icon: 'labeled',
-      animation: 'push',
-      width: 'thin'
-    }
-
-    const routes = routing.map((route, i) => {
-      const {external, path, icon, name, strict, exact} = route
-      let propsMenuItem = {
-        as: external ? 'a' : NavLink,
-        link: true,
-        [external ? 'href' : 'to']: path
-      }
-
-      if (!external) {
-        propsMenuItem = {
-          ...propsMenuItem,
-          strict,
-          exact,
-          activeClassName: 'active'
-        }
-      }
-
-      return (
-        <Menu.Item key={i} {...propsMenuItem} icon>
-          <Icon name={icon} /> {name}
-        </Menu.Item>
-      )
-    })
-    // XXX: @Metnew 12.06.2017:
-    // it's recommended to create separate Logo component for app
-    // But I caught 130# error in production build multiple times (invalid component type)
-    // When I've used Logo component (see repo history)
-    // I still don't know what was the problem behind it.
-    return (
-      <Sidebar {...sidebarProps}>
-        <div className="logo">
-          <Image src="./images/logo.png" centered height="34px" />
-        </div>
-        {routes}
-        <Menu.Item className="logout" onClick={logout}>
-          <Icon name="sign out" />
-          Logout
-        </Menu.Item>
-      </Sidebar>
-    )
-  }
+type Props = {
+	sidebarOpened: boolean
 }
+
+class SidebarComponent extends Component<Props> {
+	render () {
+		const {sidebarOpened} = this.props
+		const routing: any[] = [
+			{
+				path: '/',
+				exact: true,
+				name: 'Dashboard',
+				icon: 'newspaper'
+			},
+			{
+				path: '/links',
+				exact: true,
+				name: 'Links',
+				icon: 'bookmark'
+			},
+			{
+				path: 'https://github.com/Metnew/suicrux',
+				name: 'Github',
+				icon: 'github'
+			}
+		]
+
+		const sidebarProps = {
+			visible: sidebarOpened,
+			as: Menu,
+			vertical: true,
+			icon: 'labeled',
+			animation: 'push',
+			width: 'thin',
+			inverted: true
+		}
+
+		const routes = routing.map((route, i) => {
+			const {path, icon, name, exact} = route
+			// external links cannot use <Link> componen
+			const external = path.split('://').length > 1
+			const linkProps = external
+				? {href: path, rel: 'noopener', as: 'a'}
+				: {activeClassName: 'active', to: path, as: NavLink, exact}
+
+			return (
+				<Menu.Item key={i} {...linkProps} icon link>
+					<Icon name={icon} /> {name}
+				</Menu.Item>
+			)
+		})
+
+		return (
+			<StyledSidebar {...sidebarProps}>
+				<a className="logo-container" href="https://github.com/Metnew/suicrux">
+					<Image
+						src={require('static/images/Logo.png')}
+						alt="logo"
+						shape="circular"
+						centered
+					/>
+				</a>
+				{routes}
+			</StyledSidebar>
+		)
+	}
+}
+
+const mapStateToProps = state => {
+	const {sidebarOpened} = getLayoutState(state)
+	return {
+		sidebarOpened
+	}
+}
+
+const mapDispatchToProps = dispatch => ({})
+// re-update current active link in sidebar on location change
+export default withRouter(connect(mapStateToProps, mapDispatchToProps)(SidebarComponent))
